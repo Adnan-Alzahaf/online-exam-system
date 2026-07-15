@@ -1,4 +1,14 @@
+'''from django.contrib import admin
+from .models import Profile
+
+admin.site.register(Profile)'''
+
 from django.contrib import admin
 from .models import Profile
 
-admin.site.register(Profile)
+
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'role', 'department', 'semester', 'phone')
+    list_filter = ('role', 'department', 'semester')
+    search_fields = ('user__username', 'user__email')

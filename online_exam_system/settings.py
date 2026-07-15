@@ -99,7 +99,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "Asia/Kolkata"
+'''TIME_ZONE = "Asia/Kolkata"'''
+TIME_ZONE = "Africa/Tripoli"
 USE_I18N = True
 USE_TZ = True
 

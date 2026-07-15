@@ -39,6 +39,9 @@
                 <a href="{% url 'question_create' exam.id %}" class="btn btn-gradient">
                     <i class="bi bi-plus-circle me-2"></i>Add Question
                 </a>
+                <a href="{% url 'ai_generate' exam.id %}" class="btn btn-info">
+                    <i class="bi bi-robot me-2"></i>Generate with AI
+                </a>
                 <a href="{% url 'exam_update' exam.id %}" class="btn btn-outline-dark">
                     <i class="bi bi-pencil-square me-2"></i>Edit Exam
                 </a>
@@ -109,4 +112,4 @@
 </div>
 {% endif %}
 
-{% endblock %}
+{% endblock %}</content>

@@ -37,8 +37,17 @@
                     </td>
                     <td>{{ result.submitted_at|date:"F d, Y, g:i a" }}</td>
                     <td>
-                        <a href="{% url 'result_detail' result.id %}" class="btn btn-sm btn-gradient">View</a>
-                    </td>
+    <div class="d-flex gap-2">
+        <a href="{% url 'result_detail' result.id %}" class="btn btn-sm btn-gradient">
+            <i class="bi bi-eye me-1"></i>View
+        </a>
+        {% if request.user.profile.role == 'student' and result.student == request.user %}
+        <a href="{% url 'result_pdf' result.id %}" class="btn btn-sm btn-success" title="Download PDF">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+        {% endif %}
+    </div>
+</td>
                 </tr>
                 {% empty %}
                 <tr>

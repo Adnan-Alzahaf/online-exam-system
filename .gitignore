@@ -10,9 +10,20 @@ media/
 # Virtual env
 venv/
 env/
-
+ve/
 # VS Code
 .vscode/
 
 # OS
 .DS_Store
+
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/

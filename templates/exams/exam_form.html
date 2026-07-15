@@ -92,6 +92,34 @@
                     {{ form.exam_code }}
                 </div>
 
+              <!-- Module 2: Question Shuffling toggles -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-shuffle me-2"></i>Question Shuffling Settings
+                    </label>
+                    <div class="d-flex gap-4 flex-wrap">
+                        <div class="form-check">
+                            {{ form.randomize_questions }}
+                            <label class="form-check-label ms-2" for="{{ form.randomize_questions.id_for_label }}">
+                                Shuffle Questions Order
+                            </label>
+                            {% if form.randomize_questions.help_text %}
+                                <small class="d-block text-muted">{{ form.randomize_questions.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-check">
+                            {{ form.randomize_options }}
+                            <label class="form-check-label ms-2" for="{{ form.randomize_options.id_for_label }}">
+                                Shuffle Options (A/B/C/D)
+                            </label>
+                            {% if form.randomize_options.help_text %}
+                                <small class="d-block text-muted">{{ form.randomize_options.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mb-3 d-flex gap-4">
                     <div class="form-check">
                         {{ form.is_active }}

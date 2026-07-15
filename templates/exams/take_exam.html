@@ -2,43 +2,39 @@
 {% block title %}Take Exam | ExamSphere{% endblock %}
 {% block content %}
 
-<div class="glass-card p-4">
+<div class="glass-card p-4" id="exam-container">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
             <h2>{{ exam.title }}</h2>
-            <p class="text-muted">Answer all questions carefully.</p>
+            <p class="text-muted">
+                <i class="bi bi-shield-lock me-1"></i>
+                Anti-cheat monitoring is active. First violation: warning. Second violation: exam termination.
+            </p>
         </div>
         <div class="timer-box" id="timer">
-            {{ exam.duration_minutes }}:00
+            --:--
         </div>
     </div>
 
     <form method="post" id="examForm">
         {% csrf_token %}
+        <input type="hidden" name="cheating_detected" id="cheating_detected" value="0">
+        <input type="hidden" name="cheating_type" id="cheating_type" value="">
 
         {% for question in questions %}
         <div class="question-card mb-4">
             <h4>{{ forloop.counter }}. {{ question.question_text }}</h4>
 
-            <label class="option-box">
-                <input type="radio" name="question_{{ question.id }}" value="A">
-                <span>A. {{ question.option_a }}</span>
-            </label>
-
-            <label class="option-box">
-                <input type="radio" name="question_{{ question.id }}" value="B">
-                <span>B. {{ question.option_b }}</span>
-            </label>
-
-            <label class="option-box">
-                <input type="radio" name="question_{{ question.id }}" value="C">
-                <span>C. {{ question.option_c }}</span>
-            </label>
-
-            <label class="option-box">
-                <input type="radio" name="question_{{ question.id }}" value="D">
-                <span>D. {{ question.option_d }}</span>
-            </label>
+            {% for letter, text in question.shuffled_options %}
+                <label class="option-box">
+                    <input type="radio"
+                           name="question_{{ question.id }}"
+                           value="{% if forloop.counter == 1 %}A{% elif forloop.counter == 2 %}B{% elif forloop.counter == 3 %}C{% else %}D{% endif %}">
+                    <span>
+                        {% if forloop.counter == 1 %}A{% elif forloop.counter == 2 %}B{% elif forloop.counter == 3 %}C{% else %}D{% endif %}. {{ text }}
+                    </span>
+                </label>
+            {% endfor %}
         </div>
         {% endfor %}
 
@@ -48,26 +44,197 @@
     </form>
 </div>
 
-<script>
-    let totalSeconds = {{ exam.duration_minutes }} * 60;
-    const timer = document.getElementById("timer");
-    const form = document.getElementById("examForm");
+<div id="timer-config" data-remaining="{{ remaining_seconds }}" style="display:none;"></div>
 
-    function updateTimer() {
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        timer.textContent =
-            String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
-
-        if (totalSeconds <= 0) {
-            form.submit();
-        } else {
-            totalSeconds--;
-            setTimeout(updateTimer, 1000);
-        }
+<style>
+    /* Disable text selection on exam content */
+    #exam-container {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
     }
 
-    updateTimer();
+    /* But allow selection inside input fields */
+    #exam-container input,
+    #exam-container textarea {
+        -webkit-user-select: text;
+        user-select: text;
+    }
+</style>
+
+<script>
+    (function() {
+        // ============================================================
+        // TIMER LOGIC
+        // ============================================================
+        const timerConfig = document.getElementById("timer-config");
+        let remainingSeconds = parseInt(timerConfig.dataset.remaining, 10);
+
+        const timer = document.getElementById("timer");
+        const form = document.getElementById("examForm");
+        const cheatingDetectedInput = document.getElementById("cheating_detected");
+        const cheatingTypeInput = document.getElementById("cheating_type");
+        let hasSubmitted = false;
+
+        // ============================================================
+        // ANTI-CHEAT STATE
+        // ============================================================
+        let violationCount = 0;
+        const MAX_VIOLATIONS = 2;  // First = warning, Second = termination
+
+        function formatTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+        }
+
+        function autoSubmit() {
+            if (hasSubmitted) return;
+            hasSubmitted = true;
+            timer.textContent = "00:00";
+            timer.classList.add("text-danger");
+            form.submit();
+        }
+
+        function updateTimer() {
+            if (remainingSeconds <= 0) {
+                autoSubmit();
+                return;
+            }
+            timer.textContent = formatTime(remainingSeconds);
+            if (remainingSeconds <= 60) {
+                timer.classList.add("text-warning");
+            }
+            remainingSeconds--;
+            setTimeout(updateTimer, 1000);
+        }
+
+        updateTimer();
+
+        // ============================================================
+        // ANTI-CHEAT: TWO-STRIKE SYSTEM
+        // ============================================================
+       // ============================================================
+        // ANTI-CHEAT: TWO-STRIKE SYSTEM with Debounce Protection
+        // ============================================================
+        let lastViolationTime = 0;
+        const VIOLATION_DEBOUNCE_MS = 3000;  // 3 seconds grace period
+
+        function handleViolation(violationType) {
+            if (hasSubmitted) return;
+
+            const now = Date.now();
+            const timeSinceLastViolation = now - lastViolationTime;
+
+            // If a violation happened in the last 3 seconds, ignore this one
+            // (prevents double-counting of related events like blur + visibilitychange)
+            if (timeSinceLastViolation < VIOLATION_DEBOUNCE_MS) {
+                return;  // Treat as same violation, don't increment
+            }
+
+            lastViolationTime = now;
+            violationCount++;
+
+            if (violationCount === 1) {
+                // FIRST VIOLATION: Warning only
+                alert(
+                    "⚠️ WARNING (1 of 2)\n\n" +
+                    "Violation detected: " + violationType.replace(/_/g, ' ') + "\n\n" +
+                    "This is your only warning. If you violate exam rules again, " +
+                    "the exam will be terminated immediately and your answers so far " +
+                    "will be submitted."
+                );
+            } else {
+                // SECOND VIOLATION: Terminate exam
+                hasSubmitted = true;
+                cheatingDetectedInput.value = "1";
+                cheatingTypeInput.value = violationType;
+
+                alert(
+                    "🚨 EXAM TERMINATED\n\n" +
+                    "Second violation detected: " + violationType.replace(/_/g, ' ') + "\n\n" +
+                    "The exam has been terminated. Your answers so far will be submitted."
+                );
+
+                form.submit();
+            }
+        }
+
+        // 1. Detect tab switch / window blur
+        window.addEventListener('blur', function() {
+            handleViolation('tab_switch');
+        });
+
+        // 2. Detect page visibility change (minimize, switch app)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                handleViolation('page_hidden');
+            }
+        });
+
+        // 3. Detect copy (Ctrl+C)
+        document.addEventListener('copy', function(e) {
+            e.preventDefault();
+            handleViolation('copy_attempt');
+        });
+
+        // 4. Detect right-click (silent prevention, NOT a violation)
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // 5. Detect dangerous keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // F12 - Developer Tools
+            if (e.key === 'F12') {
+                e.preventDefault();
+                handleViolation('devtools_f12');
+                return false;
+            }
+
+            // Ctrl+Shift+I - Developer Tools
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+                e.preventDefault();
+                handleViolation('devtools_shortcut');
+                return false;
+            }
+
+            // Ctrl+Shift+J - Console
+            if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) {
+                e.preventDefault();
+                handleViolation('devtools_console');
+                return false;
+            }
+
+            // Ctrl+U - View Source
+            if (e.ctrlKey && (e.key === 'U' || e.key === 'u')) {
+                e.preventDefault();
+                handleViolation('view_source');
+                return false;
+            }
+
+            // Ctrl+P - Print
+            if (e.ctrlKey && (e.key === 'P' || e.key === 'p')) {
+                e.preventDefault();
+                handleViolation('print_attempt');
+                return false;
+            }
+
+            // Ctrl+S - Save
+            if (e.ctrlKey && (e.key === 'S' || e.key === 's')) {
+                e.preventDefault();
+                handleViolation('save_attempt');
+                return false;
+            }
+        });
+
+        // 6. Detect print attempts via menu
+        window.addEventListener('beforeprint', function() {
+            handleViolation('print_attempt');
+        });
+    })();
 </script>
 
 {% endblock %}
